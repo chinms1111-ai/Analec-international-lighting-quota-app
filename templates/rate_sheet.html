@@ -11,22 +11,22 @@
   </div>
 
   {% if categories %}
-  <div class="form-card no-print" style="max-width:100%;">
-    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
-      <strong style="color:var(--navy-dark);">Select items to include</strong>
+  <div class="form-card no-print picker-header-card" style="max-width:100%;">
+    <div class="picker-header">
+      <strong>Select items to include</strong>
       <div class="row-actions">
         <button type="button" id="select-all-btn" class="btn btn-ghost">Select All</button>
         <button type="button" id="select-none-btn" class="btn btn-ghost">Select None</button>
       </div>
     </div>
     {% for cat, items in categories.items() %}
-    <div class="item-picker-cat" style="margin-bottom:14px;">
-      <label style="display:flex; align-items:center; gap:6px; font-weight:bold; color:var(--navy-dark); margin-bottom:6px;">
+    <div class="picker-cat">
+      <label class="picker-cat-label">
         <input type="checkbox" class="cat-select-all" data-cat="{{ cat }}" checked> {{ cat }}
       </label>
-      <div style="display:flex; flex-wrap:wrap; gap:8px 20px; padding-left:22px;">
+      <div class="picker-items">
         {% for it in items %}
-        <label style="display:flex; align-items:center; gap:6px; font-weight:normal; font-size:0.88rem;">
+        <label class="picker-item-label">
           <input type="checkbox" class="item-select" data-item-id="{{ it.id }}" data-cat="{{ cat }}" checked> {{ it.name }}{% if it.brand %} <span class="muted">({{ it.brand }})</span>{% endif %}
         </label>
         {% endfor %}
@@ -63,8 +63,8 @@
     {% for cat, items in categories.items() %}
       <div class="rate-cat-block" data-cat="{{ cat }}">
         <h2 class="cat-title">{{ cat }}</h2>
-        <div class="table-wrap">
-          <table>
+        <div class="table-wrap cards-wrap">
+          <table class="table-cards">
             <thead>
               <tr>
                 <th>Item</th>
@@ -76,10 +76,10 @@
             <tbody>
               {% for it in items %}
               <tr data-item-id="{{ it.id }}">
-                <td>{{ it.name }}</td>
-                <td class="muted-cell">{{ it.brand or '—' }}</td>
-                <td>{{ it.unit }}</td>
-                <td class="formula-color">₦{{ '{:,.0f}'.format(it.selling_price) }}</td>
+                <td data-label="Item">{{ it.name }}</td>
+                <td data-label="Brand/Range" class="muted-cell">{{ it.brand or '—' }}</td>
+                <td data-label="Unit">{{ it.unit }}</td>
+                <td data-label="Rate (₦)" class="formula-color">₦{{ '{:,.0f}'.format(it.selling_price) }}</td>
               </tr>
               {% endfor %}
             </tbody>

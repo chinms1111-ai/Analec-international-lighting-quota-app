@@ -6,7 +6,7 @@
     <a href="{{ url_for('quote_new') }}" class="btn btn-primary">+ New Quote</a>
   </div>
 
-  <div class="row-actions" style="margin-bottom:16px;">
+  <div class="filter-row">
     <a href="{{ url_for('quotes_list') }}" class="btn {{ 'btn-primary' if not status_filter else 'btn-ghost' }}">All</a>
     {% for s in statuses %}
       <a href="{{ url_for('quotes_list', status=s) }}" class="btn {{ 'btn-primary' if status_filter == s else 'btn-ghost' }}">{{ status_labels[s] }}</a>
@@ -14,14 +14,14 @@
   </div>
 
   {% if quotes %}
-  <input type="text" id="quote-search" placeholder="Search by client, ref, or project/site..." style="width:100%; max-width:400px; padding:9px 12px; border:1px solid var(--border); border-radius:6px; margin-bottom:16px; font-size:0.95rem;">
+  <input type="text" id="quote-search" class="search-input" placeholder="Search by client, ref, or project/site...">
   {% endif %}
 
   {% if not quotes %}
     <p class="empty">{{ 'No quotes match this filter.' if status_filter else 'No quotes yet. Create your first one.' }}</p>
   {% else %}
-  <div class="table-wrap">
-    <table>
+  <div class="table-wrap cards-wrap">
+    <table class="table-cards">
       <thead>
         <tr>
           <th>Ref</th>
@@ -36,15 +36,15 @@
       <tbody>
         {% for q in quotes %}
         <tr class="quote-row" data-search="{{ (q.quote_ref ~ ' ' ~ q.client_name ~ ' ' ~ q.project_site)|lower }}">
-          <td>{{ q.quote_ref }}</td>
-          <td>{% if q.customer %}<a href="{{ url_for('customer_view', customer_id=q.customer.id) }}">{{ q.client_name }}</a>{% else %}{{ q.client_name }}{% endif %}</td>
-          <td class="muted-cell">{{ q.project_site }}</td>
-          <td>{{ q.created_at.strftime('%d %b %Y') }}</td>
-          <td><span class="badge badge-{{ q.status }}">{{ q.status_label }}</span></td>
-          <td class="formula-color">₦{{ '{:,.0f}'.format(q.grand_total) }}</td>
+          <td data-label="Ref">{{ q.quote_ref }}</td>
+          <td data-label="Client">{% if q.customer %}<a href="{{ url_for('customer_view', customer_id=q.customer.id) }}">{{ q.client_name }}</a>{% else %}{{ q.client_name }}{% endif %}</td>
+          <td data-label="Project/Site" class="muted-cell">{{ q.project_site }}</td>
+          <td data-label="Date">{{ q.created_at.strftime('%d %b %Y') }}</td>
+          <td data-label="Status"><span class="badge badge-{{ q.status }}">{{ q.status_label }}</span></td>
+          <td data-label="Grand Total (₦)" class="formula-color">₦{{ '{:,.0f}'.format(q.grand_total) }}</td>
           <td class="row-actions">
             <a href="{{ url_for('quote_view', quote_id=q.id) }}">View</a>
-            <form method="post" action="{{ url_for('quote_delete', quote_id=q.id) }}" onsubmit="return confirm('Delete quote {{ q.quote_ref }}?');" style="display:inline">
+            <form method="post" action="{{ url_for('quote_delete', quote_id=q.id) }}" onsubmit="return confirm('Delete quote {{ q.quote_ref }}?');" class="inline-form">
               <button type="submit" class="link-btn">Delete</button>
             </form>
           </td>

@@ -6,13 +6,13 @@
     <button onclick="window.print()" class="btn btn-primary">Print / Save as PDF</button>
   </div>
 
-  <div class="form-card no-print" style="max-width:640px; margin-bottom:20px;">
-    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+  <div class="form-card info-card no-print">
+    <div class="split-row">
       <div>
         <strong>Status:</strong> {{ q.status_label }}
         {% if q.customer %} &nbsp;|&nbsp; <strong>Customer:</strong> <a href="{{ url_for('customer_view', customer_id=q.customer.id) }}">{{ q.customer.name }}</a>{% endif %}
       </div>
-      <form method="post" action="{{ url_for('quote_status_update', quote_id=q.id) }}" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+      <form method="post" action="{{ url_for('quote_status_update', quote_id=q.id) }}" class="status-actions">
         {% for s in statuses %}
           {% if s != q.status %}
           <button type="submit" name="status" value="{{ s }}" class="btn btn-ghost">Mark {{ status_labels[s] }}</button>
@@ -21,9 +21,9 @@
       </form>
     </div>
     {% if q.status != 'converted' %}
-    <p class="muted" style="margin:10px 0 0; font-size:0.85rem;">Marking this "Converted to Sale" will deduct these items from stock automatically.</p>
+    <p class="status-note">Marking this "Converted to Sale" will deduct these items from stock automatically.</p>
     {% elif q.stock_deducted %}
-    <p class="muted" style="margin:10px 0 0; font-size:0.85rem;">Stock has been deducted for this sale.</p>
+    <p class="status-note">Stock has been deducted for this sale.</p>
     {% endif %}
   </div>
 
@@ -53,8 +53,8 @@
       {% if q.project_site %}<div><strong>Project/Site:</strong> {{ q.project_site }}</div>{% endif %}
     </div>
 
-    <div class="table-wrap">
-      <table>
+    <div class="table-wrap cards-wrap">
+      <table class="table-cards">
         <thead>
           <tr>
             <th>Item</th>
@@ -67,11 +67,11 @@
         <tbody>
           {% for l in q.lines %}
           <tr>
-            <td>{{ l.item_name }}</td>
-            <td>{{ l.unit }}</td>
-            <td>{{ l.qty|int if l.qty == l.qty|int else l.qty }}</td>
-            <td>₦{{ '{:,.0f}'.format(l.unit_price) }}</td>
-            <td>₦{{ '{:,.0f}'.format(l.line_total) }}</td>
+            <td data-label="Item">{{ l.item_name }}</td>
+            <td data-label="Unit">{{ l.unit }}</td>
+            <td data-label="Qty">{{ l.qty|int if l.qty == l.qty|int else l.qty }}</td>
+            <td data-label="Unit Price (₦)">₦{{ '{:,.0f}'.format(l.unit_price) }}</td>
+            <td data-label="Line Total (₦)" class="formula-color">₦{{ '{:,.0f}'.format(l.line_total) }}</td>
           </tr>
           {% endfor %}
         </tbody>

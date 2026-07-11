@@ -19,7 +19,16 @@
           {% if settings and settings.tagline %}<span class="brand-tagline">{{ settings.tagline }}</span>{% endif %}
         </span>
       </a>
-      <nav class="navlinks">
+
+      <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="main-nav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+
+      <nav class="navlinks" id="main-nav">
         <a href="{{ url_for('price_list') }}" class="{{ 'active' if request.endpoint == 'price_list' }}">Price List</a>
         <a href="{{ url_for('rate_sheet') }}" class="{{ 'active' if request.endpoint == 'rate_sheet' }}">Rate Sheet</a>
         <a href="{{ url_for('quote_new') }}" class="{{ 'active' if request.endpoint == 'quote_new' }}">New Quote</a>
@@ -41,5 +50,23 @@
     {% endwith %}
     {% block content %}{% endblock %}
   </main>
+
+  <script>
+    const navToggle = document.getElementById('nav-toggle');
+    const mainNav = document.getElementById('main-nav');
+    if (navToggle && mainNav) {
+      navToggle.addEventListener('click', () => {
+        const isOpen = mainNav.classList.toggle('nav-open');
+        navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+      // Close the menu after navigating (mobile)
+      mainNav.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', () => {
+          mainNav.classList.remove('nav-open');
+          navToggle.setAttribute('aria-expanded', 'false');
+        });
+      });
+    }
+  </script>
 </body>
 </html>

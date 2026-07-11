@@ -10,7 +10,7 @@
   </div>
 
   {% if categories %}
-  <input type="text" id="price-search" placeholder="Search items by name..." style="width:100%; max-width:400px; padding:9px 12px; border:1px solid var(--border); border-radius:6px; margin-bottom:18px; font-size:0.95rem;">
+  <input type="text" id="price-search" class="search-input" placeholder="Search items by name...">
   {% endif %}
 
   {% if categories %}
@@ -50,8 +50,8 @@
       {{ cat }}
       <span class="cat-count">{{ items | length }} item{{ 's' if items | length != 1 }}</span>
     </h2>
-    <div class="table-wrap">
-      <table>
+    <div class="table-wrap cards-wrap">
+      <table class="table-cards">
         <thead>
           <tr>
             <th>Item</th>
@@ -68,20 +68,20 @@
         <tbody>
           {% for it in items %}
           <tr class="price-row" data-name="{{ it.name|lower }}">
-            <td>{{ it.name }}</td>
-            <td class="muted-cell">{{ it.brand or '—' }}</td>
-            <td>{{ it.unit }}</td>
-            <td class="input-color">₦{{ '{:,.0f}'.format(it.cost_price) }}</td>
-            <td class="input-color">{{ (it.markup_pct * 100)|round(0, 'floor')|int }}%</td>
-            <td class="formula-color">₦{{ '{:,.0f}'.format(it.selling_price) }}</td>
-            <td>
+            <td data-label="Item">{{ it.name }}</td>
+            <td data-label="Brand/Range" class="muted-cell">{{ it.brand or '—' }}</td>
+            <td data-label="Unit">{{ it.unit }}</td>
+            <td data-label="Cost Price (₦)" class="input-color">₦{{ '{:,.0f}'.format(it.cost_price) }}</td>
+            <td data-label="Markup %" class="input-color">{{ (it.markup_pct * 100)|round(0, 'floor')|int }}%</td>
+            <td data-label="Selling Price (₦)" class="formula-color">₦{{ '{:,.0f}'.format(it.selling_price) }}</td>
+            <td data-label="Stock">
               {{ it.quantity_on_hand }}
               {% if it.is_low_stock %}<span class="badge badge-declined" title="At or below threshold of {{ it.low_stock_threshold }}">Low</span>{% endif %}
             </td>
-            <td class="muted-cell">{{ it.notes }}</td>
+            <td data-label="Notes" class="muted-cell">{{ it.notes }}</td>
             <td class="no-print row-actions">
               <a href="{{ url_for('item_edit', item_id=it.id) }}">Edit</a>
-              <form method="post" action="{{ url_for('item_delete', item_id=it.id) }}" onsubmit="return confirm('Remove {{ it.name }}?');" style="display:inline">
+              <form method="post" action="{{ url_for('item_delete', item_id=it.id) }}" onsubmit="return confirm('Remove {{ it.name }}?');" class="inline-form">
                 <button type="submit" class="link-btn">Delete</button>
               </form>
             </td>

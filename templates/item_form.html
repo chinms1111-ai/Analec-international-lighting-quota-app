@@ -1,11 +1,11 @@
- {% extends "base.html" %}
+{% extends "base.html" %}
 {% block title %}{{ 'Edit Item' if item else 'Add Item' }}{% endblock %}
 {% block content %}
   <div class="page-header">
     <h1>{{ 'Edit Item' if item else 'Add Item' }}</h1>
   </div>
 
-  <form method="post" class="form-card" list-datalist>
+  <form method="post" class="form-card">
     <label>Category
       <input type="text" name="category" list="category-list" value="{{ item.category if item else '' }}" required>
       <datalist id="category-list">

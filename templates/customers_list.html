@@ -11,8 +11,8 @@
       <p>No customers yet. Add one here, or they'll be added automatically the first time you create a quote for them.</p>
     </div>
   {% else %}
-  <div class="table-wrap">
-    <table>
+  <div class="table-wrap cards-wrap">
+    <table class="table-cards">
       <thead>
         <tr>
           <th>Name</th>
@@ -26,11 +26,11 @@
       <tbody>
         {% for c in customers %}
         <tr>
-          <td><a href="{{ url_for('customer_view', customer_id=c.id) }}">{{ c.name }}</a></td>
-          <td class="muted-cell">{{ c.phone or '—' }}</td>
-          <td class="muted-cell">{{ c.address or '—' }}</td>
-          <td>{{ c.quote_count }}</td>
-          <td class="formula-color">₦{{ '{:,.0f}'.format(c.total_business) }}</td>
+          <td data-label="Name"><a href="{{ url_for('customer_view', customer_id=c.id) }}">{{ c.name }}</a></td>
+          <td data-label="Phone" class="muted-cell">{{ c.phone or '—' }}</td>
+          <td data-label="Address" class="muted-cell">{{ c.address or '—' }}</td>
+          <td data-label="Quotes">{{ c.quote_count }}</td>
+          <td data-label="Total Business (₦)" class="formula-color">₦{{ '{:,.0f}'.format(c.total_business) }}</td>
           <td class="row-actions">
             <a href="{{ url_for('customer_view', customer_id=c.id) }}">View</a>
             <a href="{{ url_for('customer_edit', customer_id=c.id) }}">Edit</a>
