@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Customer' if customer else 'Add Customer' }}{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>{{ 'Edit Customer' if customer else 'Add Customer' }}</h1>
+  </div>
+
+  <form method="post" class="form-card">
+    <label>Name
+      <input type="text" name="name" value="{{ customer.name if customer else '' }}" required>
+    </label>
+    <label>Phone Number
+      <input type="text" name="phone" value="{{ customer.phone if customer else '' }}">
+    </label>
+    <label>Address / Location
+      <input type="text" name="address" value="{{ customer.address if customer else '' }}">
+    </label>
+    <label>Notes
+      <input type="text" name="notes" value="{{ customer.notes if customer else '' }}">
+    </label>
+
+    <div class="form-actions">
+      <a href="{{ url_for('customer_view', customer_id=customer.id) if customer else url_for('customers_list') }}" class="btn btn-ghost">Cancel</a>
+      <button type="submit" class="btn btn-primary">{{ 'Save Changes' if customer else 'Add Customer' }}</button>
+    </div>
+  </form>
+{% endblock %}

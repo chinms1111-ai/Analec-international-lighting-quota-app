@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block title %}New Quote{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>New Quote</h1>
+  </div>
+
+  <form method="post" id="quote-form" class="form-card">
+    <div class="grid-2">
+      <label>Customer
+        <select id="customer-select" name="customer_id">
+          <option value="">-- select existing customer --</option>
+          <option value="__new__">+ New customer</option>
+        </select>
+      </label>
+      <label>Project / Site
+        <input type="text" name="project_site">
+      </label>
+      <label>Discount %
+        <input type="number" step="0.1" min="0" max="100" name="discount_pct" value="0">
+      </label>
+    </div>
+
+    <div id="new-customer-fields" class="grid-2" style="display:none;">
+      <label>New Customer Name
+        <input type="text" id="new-customer-name" name="new_customer_name">
+      </label>
+      <label>Phone Number
+        <input type="text" name="new_customer_phone">
+      </label>
+      <label>Address / Location
+        <input type="text" name="new_customer_address">
+      </label>
+    </div>
+
+    <h2 class="cat-title">Items</h2>
+    <div class="table-wrap">
+      <table id="items-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Unit</th>
+            <th>Qty</th>
+            <th>Unit Price (₦)</th>
+            <th>Line Total (₦)</th>
+            <th>Stock</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="items-body"></tbody>
+      </table>
+    </div>
+    <button type="button" id="add-row-btn" class="btn btn-ghost">+ Add Item Row</button>
+
+    <div class="totals-box">
+      <div><span>Subtotal</span><span id="subtotal-display">₦0</span></div>
+      <div><span>Discount Amount</span><span id="discount-display">₦0</span></div>
+      <div class="grand"><span>Grand Total</span><span id="grand-display">₦0</span></div>
+    </div>
+
+    <div class="form-actions">
+      <a href="{{ url_for('price_list') }}" class="btn btn-ghost">Cancel</a>
+      <button type="submit" class="btn btn-primary">Save Quote</button>
+    </div>
+  </form>
+
+<script>
+let CATALOG = [];
+let CUSTOMERS = [];
+
+async function loadCatalog() {
+  const res = await fetch("{{ url_for('api_items') }}");
+  CATALOG = await res.json();
+}
+
+async function loadCustomers() {
+  const res = await fetch("{{ url_for('api_customers') }}");
+  CUSTOMERS = await res.json();
+  const select = document.getElementById('customer-select');
+  const newOpt = select.querySelector('option[value="__new__"]');
+  for (const c of CUSTOMERS) {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = c.phone ? `${c.name} (${c.phone})` : c.name;
+    select.insertBefore(opt, newOpt);
+  }
+  const preselect = new URLSearchParams(window.location.search).get('customer_id');
+  if (preselect) select.value = preselect;
+  toggleNewCustomerFields();
+}
+
+function toggleNewCustomerFields() {
+  const select = document.getElementById('customer-select');
+  const wrap = document.getElementById('new-customer-fields');
+  const nameInput = document.getElementById('new-customer-name');
+  const isNew = select.value === '__new__';
+  wrap.style.display = isNew ? 'grid' : 'none';
+  nameInput.required = isNew;
+  if (isNew) select.removeAttribute('name');
+  else select.setAttribute('name', 'customer_id');
+}
+
+document.getElementById('customer-select').addEventListener('change', toggleNewCustomerFields);
+
+function itemOptions(selectedId) {
+  let opts = '<option value="">-- select item --</option>';
+  for (const it of CATALOG) {
+    const sel = (selectedId && String(selectedId) === String(it.id)) ? 'selected' : '';
+    const label = it.brand ? `${it.name} (${it.brand})` : it.name;
+    opts += `<option value="${it.id}" ${sel}>${label}</option>`;
+  }
+  return opts;
+}
+
+function addRow() {
+  const tbody = document.getElementById('items-body');
+  const idx = tbody.children.length;
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><select name="item_id[]" class="item-select" data-idx="${idx}">${itemOptions()}</select></td>
+    <td class="unit-cell muted-cell">—</td>
+    <td><input type="number" name="qty[]" class="qty-input" min="0" step="1" value=""></td>
+    <td class="price-cell">₦0</td>
+    <td class="linetotal-cell">₦0</td>
+    <td class="stock-cell muted-cell">—</td>
+    <td><button type="button" class="link-btn remove-row">Remove</button></td>
+  `;
+  tbody.appendChild(tr);
+  wireRow(tr);
+}
+
+function wireRow(tr) {
+  const select = tr.querySelector('.item-select');
+  const qty = tr.querySelector('.qty-input');
+  const unitCell = tr.querySelector('.unit-cell');
+  const priceCell = tr.querySelector('.price-cell');
+  const totalCell = tr.querySelector('.linetotal-cell');
+  const stockCell = tr.querySelector('.stock-cell');
+  const removeBtn = tr.querySelector('.remove-row');
+
+  function recalcRow() {
+    const item = CATALOG.find(i => String(i.id) === select.value);
+    const price = item ? item.price : 0;
+    const unit = item ? item.unit : '—';
+    const q = parseFloat(qty.value) || 0;
+    unitCell.textContent = unit;
+    priceCell.textContent = '₦' + price.toLocaleString();
+    priceCell.dataset.price = price;
+    totalCell.textContent = '₦' + (price * q).toLocaleString();
+    totalCell.dataset.total = price * q;
+
+    if (item) {
+      const short = q > item.stock;
+      stockCell.textContent = item.stock + (short ? ' ⚠ short' : ' in stock');
+      stockCell.className = short ? 'stock-cell badge badge-declined' : 'stock-cell muted-cell';
+    } else {
+      stockCell.textContent = '—';
+      stockCell.className = 'stock-cell muted-cell';
+    }
+
+    recalcTotals();
+  }
+
+  select.addEventListener('change', recalcRow);
+  qty.addEventListener('input', recalcRow);
+  removeBtn.addEventListener('click', () => { tr.remove(); recalcTotals(); });
+}
+
+function recalcTotals() {
+  let subtotal = 0;
+  document.querySelectorAll('.linetotal-cell').forEach(td => {
+    subtotal += parseFloat(td.dataset.total) || 0;
+  });
+  const discountPct = (parseFloat(document.querySelector('[name="discount_pct"]').value) || 0) / 100;
+  const discountAmt = subtotal * discountPct;
+  const grand = subtotal - discountAmt;
+  document.getElementById('subtotal-display').textContent = '₦' + subtotal.toLocaleString();
+  document.getElementById('discount-display').textContent = '₦' + discountAmt.toLocaleString();
+  document.getElementById('grand-display').textContent = '₦' + grand.toLocaleString();
+}
+
+document.getElementById('add-row-btn').addEventListener('click', addRow);
+document.querySelector('[name="discount_pct"]').addEventListener('input', recalcTotals);
+
+loadCatalog().then(() => { addRow(); addRow(); addRow(); });
+loadCustomers();
+</script>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}{{ c.name }}{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>{{ c.name }}</h1>
+    <div class="row-actions">
+      <a href="{{ url_for('customer_edit', customer_id=c.id) }}" class="btn btn-ghost">Edit</a>
+      <a href="{{ url_for('quote_new') }}?customer_id={{ c.id }}" class="btn btn-primary">+ New Quote</a>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <span class="stat-value">{{ c.quote_count }}</span>
+      <span class="stat-label">Quotes</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-value">₦{{ '{:,.0f}'.format(c.total_business) }}</span>
+      <span class="stat-label">Total Business</span>
+    </div>
+  </div>
+
+  <div class="form-card" style="max-width:640px; margin-bottom:24px;">
+    <div><strong>Phone:</strong> {{ c.phone or '—' }}</div>
+    <div><strong>Address:</strong> {{ c.address or '—' }}</div>
+    {% if c.notes %}<div><strong>Notes:</strong> {{ c.notes }}</div>{% endif %}
+  </div>
+
+  <h2 class="cat-title">Quote History</h2>
+  {% if not quotes %}
+    <p class="empty">No quotes yet for this customer.</p>
+  {% else %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Ref</th>
+          <th>Project/Site</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th>Grand Total (₦)</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for q in quotes %}
+        <tr>
+          <td>{{ q.quote_ref }}</td>
+          <td class="muted-cell">{{ q.project_site }}</td>
+          <td>{{ q.created_at.strftime('%d %b %Y') }}</td>
+          <td><span class="badge badge-{{ q.status }}">{{ q.status_label }}</span></td>
+          <td class="formula-color">₦{{ '{:,.0f}'.format(q.grand_total) }}</td>
+          <td class="row-actions"><a href="{{ url_for('quote_view', quote_id=q.id) }}">View</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('customer_delete', customer_id=c.id) }}" onsubmit="return confirm('Remove {{ c.name }}? This only works if they have no quotes on file.');" style="margin-top:16px;">
+    <button type="submit" class="link-btn">Delete Customer</button>
+  </form>
+{% endblock %}

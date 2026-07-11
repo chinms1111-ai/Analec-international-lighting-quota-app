@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Customers{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>Customers</h1>
+    <a href="{{ url_for('customer_add') }}" class="btn btn-primary">+ Add Customer</a>
+  </div>
+
+  {% if not customers %}
+    <div class="empty-state">
+      <p>No customers yet. Add one here, or they'll be added automatically the first time you create a quote for them.</p>
+    </div>
+  {% else %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Phone</th>
+          <th>Address</th>
+          <th>Quotes</th>
+          <th>Total Business (₦)</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in customers %}
+        <tr>
+          <td><a href="{{ url_for('customer_view', customer_id=c.id) }}">{{ c.name }}</a></td>
+          <td class="muted-cell">{{ c.phone or '—' }}</td>
+          <td class="muted-cell">{{ c.address or '—' }}</td>
+          <td>{{ c.quote_count }}</td>
+          <td class="formula-color">₦{{ '{:,.0f}'.format(c.total_business) }}</td>
+          <td class="row-actions">
+            <a href="{{ url_for('customer_view', customer_id=c.id) }}">View</a>
+            <a href="{{ url_for('customer_edit', customer_id=c.id) }}">Edit</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+{% endblock %}

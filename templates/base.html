@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ settings.business_name if settings else 'Pricing Tool' }} — {% block title %}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar no-print">
+    <div class="topbar-inner">
+      <a href="{{ url_for('price_list') }}" class="brand">
+        <svg class="brand-bulb" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="16" r="11"/>
+          <path d="M14 27 L26 27 M15 32 L25 32 M17 37 L23 37"/>
+        </svg>
+        <span class="brand-text">
+          <span class="brand-name">{{ settings.business_name if settings else 'Pricing Tool' }}</span>
+          {% if settings and settings.tagline %}<span class="brand-tagline">{{ settings.tagline }}</span>{% endif %}
+        </span>
+      </a>
+      <nav class="navlinks">
+        <a href="{{ url_for('price_list') }}" class="{{ 'active' if request.endpoint == 'price_list' }}">Price List</a>
+        <a href="{{ url_for('rate_sheet') }}" class="{{ 'active' if request.endpoint == 'rate_sheet' }}">Rate Sheet</a>
+        <a href="{{ url_for('quote_new') }}" class="{{ 'active' if request.endpoint == 'quote_new' }}">New Quote</a>
+        <a href="{{ url_for('quotes_list') }}" class="{{ 'active' if request.endpoint == 'quotes_list' }}">Quotes</a>
+        <a href="{{ url_for('customers_list') }}" class="{{ 'active' if request.endpoint in ['customers_list', 'customer_view', 'customer_add', 'customer_edit'] }}">Customers</a>
+        <a href="{{ url_for('settings') }}" class="{{ 'active' if request.endpoint == 'settings' }}">Settings</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="flash no-print">
+          {% for m in messages %}<div>{{ m }}</div>{% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

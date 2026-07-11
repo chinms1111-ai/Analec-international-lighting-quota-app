@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% block title %}Rate Sheet{% endblock %}
+{% block content %}
+  <div class="page-header no-print">
+    <h1>Rate Sheet</h1>
+    <div class="row-actions">
+      <button onclick="window.print()" class="btn btn-ghost">Print</button>
+      <button id="download-image-btn" onclick="downloadRateSheet('image')" class="btn btn-ghost">Download Image</button>
+      <button id="download-pdf-btn" onclick="downloadRateSheet('pdf')" class="btn btn-primary">Download PDF</button>
+    </div>
+  </div>
+
+  {% if categories %}
+  <div class="form-card no-print" style="max-width:100%;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+      <strong style="color:var(--navy-dark);">Select items to include</strong>
+      <div class="row-actions">
+        <button type="button" id="select-all-btn" class="btn btn-ghost">Select All</button>
+        <button type="button" id="select-none-btn" class="btn btn-ghost">Select None</button>
+      </div>
+    </div>
+    {% for cat, items in categories.items() %}
+    <div class="item-picker-cat" style="margin-bottom:14px;">
+      <label style="display:flex; align-items:center; gap:6px; font-weight:bold; color:var(--navy-dark); margin-bottom:6px;">
+        <input type="checkbox" class="cat-select-all" data-cat="{{ cat }}" checked> {{ cat }}
+      </label>
+      <div style="display:flex; flex-wrap:wrap; gap:8px 20px; padding-left:22px;">
+        {% for it in items %}
+        <label style="display:flex; align-items:center; gap:6px; font-weight:normal; font-size:0.88rem;">
+          <input type="checkbox" class="item-select" data-item-id="{{ it.id }}" data-cat="{{ cat }}" checked> {{ it.name }}{% if it.brand %} <span class="muted">({{ it.brand }})</span>{% endif %}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="quote-sheet">
+    <div class="quote-letterhead">
+      <div class="quote-brand">
+        <svg class="quote-bulb" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="16" r="11"/>
+          <path d="M14 27 L26 27 M15 32 L25 32 M17 37 L23 37"/>
+        </svg>
+        <div>
+          <div class="quote-business">{{ settings.business_name }}</div>
+          <div class="quote-tagline">{{ settings.tagline }}</div>
+          {% if settings.address %}<div class="muted">{{ settings.address }}</div>{% endif %}
+          {% if settings.phone %}<div class="muted">{{ settings.phone }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="quote-meta">
+        <div><strong>Wholesale Rate Sheet</strong></div>
+        <div><strong>Date:</strong> <span id="rs-date"></span></div>
+      </div>
+    </div>
+
+    {% if not categories %}
+      <p class="empty">No items in the price list yet.</p>
+    {% endif %}
+
+    {% for cat, items in categories.items() %}
+      <div class="rate-cat-block" data-cat="{{ cat }}">
+        <h2 class="cat-title">{{ cat }}</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Brand/Range</th>
+                <th>Unit</th>
+                <th>Rate (₦)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for it in items %}
+              <tr data-item-id="{{ it.id }}">
+                <td>{{ it.name }}</td>
+                <td class="muted-cell">{{ it.brand or '—' }}</td>
+                <td>{{ it.unit }}</td>
+                <td class="formula-color">₦{{ '{:,.0f}'.format(it.selling_price) }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% endfor %}
+
+    <div class="quote-footer muted">Rates subject to change without notice. Contact us to confirm current pricing before ordering.</div>
+  </div>
+
+<script>
+  document.getElementById('rs-date').textContent = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  const itemCheckboxes = document.querySelectorAll('.item-select');
+  const catSelectAllBoxes = document.querySelectorAll('.cat-select-all');
+  const selectAllBtn = document.getElementById('select-all-btn');
+  const selectNoneBtn = document.getElementById('select-none-btn');
+
+  function applyItemSelection() {
+    document.querySelectorAll('.rate-cat-block').forEach(block => {
+      let anyVisible = false;
+      block.querySelectorAll('tr[data-item-id]').forEach(tr => {
+        const cb = document.querySelector(`.item-select[data-item-id="${tr.dataset.itemId}"]`);
+        const show = cb ? cb.checked : true;
+        tr.style.display = show ? '' : 'none';
+        if (show) anyVisible = true;
+      });
+      block.style.display = anyVisible ? '' : 'none';
+    });
+  }
+
+  itemCheckboxes.forEach(cb => {
+    cb.addEventListener('change', () => {
+      const cat = cb.dataset.cat;
+      const siblings = document.querySelectorAll(`.item-select[data-cat="${CSS.escape(cat)}"]`);
+      const catAllCb = document.querySelector(`.cat-select-all[data-cat="${CSS.escape(cat)}"]`);
+      if (catAllCb) catAllCb.checked = [...siblings].every(x => x.checked);
+      applyItemSelection();
+    });
+  });
+
+  catSelectAllBoxes.forEach(cb => {
+    cb.addEventListener('change', () => {
+      const cat = cb.dataset.cat;
+      document.querySelectorAll(`.item-select[data-cat="${CSS.escape(cat)}"]`).forEach(x => { x.checked = cb.checked; });
+      applyItemSelection();
+    });
+  });
+
+  if (selectAllBtn) {
+    selectAllBtn.addEventListener('click', () => {
+      itemCheckboxes.forEach(cb => { cb.checked = true; });
+      catSelectAllBoxes.forEach(cb => { cb.checked = true; });
+      applyItemSelection();
+    });
+  }
+  if (selectNoneBtn) {
+    selectNoneBtn.addEventListener('click', () => {
+      itemCheckboxes.forEach(cb => { cb.checked = false; });
+      catSelectAllBoxes.forEach(cb => { cb.checked = false; });
+      applyItemSelection();
+    });
+  }
+
+  applyItemSelection();
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+  function fileBaseName() {
+    const biz = "{{ settings.business_name|default('rate-sheet', true) }}".trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'rate-sheet';
+    const date = new Date().toISOString().slice(0, 10);
+    return `${biz}-rate-sheet-${date}`;
+  }
+
+  async function downloadRateSheet(kind) {
+    const imgBtn = document.getElementById('download-image-btn');
+    const pdfBtn = document.getElementById('download-pdf-btn');
+    const clickedBtn = kind === 'image' ? imgBtn : pdfBtn;
+    const originalText = clickedBtn.textContent;
+    clickedBtn.textContent = 'Generating...';
+    imgBtn.disabled = true;
+    pdfBtn.disabled = true;
+
+    try {
+      const sheet = document.querySelector('.quote-sheet');
+      const canvas = await html2canvas(sheet, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+      });
+
+      if (kind === 'image') {
+        const link = document.createElement('a');
+        link.download = fileBaseName() + '.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } else {
+        const { jsPDF } = window.jspdf;
+        const imgData = canvas.toDataURL('image/png');
+        // A4 in points, portrait
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const margin = 24;
+        const usableWidth = pageWidth - margin * 2;
+        const imgHeight = (canvas.height * usableWidth) / canvas.width;
+
+        if (imgHeight <= pageHeight - margin * 2) {
+          pdf.addImage(imgData, 'PNG', margin, margin, usableWidth, imgHeight);
+        } else {
+          // Content taller than one page: slice across multiple pages
+          const pxPerPage = (canvas.width * (pageHeight - margin * 2)) / usableWidth;
+          let renderedPx = 0;
+          let first = true;
+          while (renderedPx < canvas.height) {
+            const sliceHeightPx = Math.min(pxPerPage, canvas.height - renderedPx);
+            const sliceCanvas = document.createElement('canvas');
+            sliceCanvas.width = canvas.width;
+            sliceCanvas.height = sliceHeightPx;
+            const ctx = sliceCanvas.getContext('2d');
+            ctx.drawImage(canvas, 0, renderedPx, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+            const sliceData = sliceCanvas.toDataURL('image/png');
+            const sliceHeightPt = (sliceHeightPx * usableWidth) / canvas.width;
+            if (!first) pdf.addPage();
+            pdf.addImage(sliceData, 'PNG', margin, margin, usableWidth, sliceHeightPt);
+            renderedPx += sliceHeightPx;
+            first = false;
+          }
+        }
+        pdf.save(fileBaseName() + '.pdf');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Could not generate the file. Please try again.');
+    } finally {
+      clickedBtn.textContent = originalText;
+      imgBtn.disabled = false;
+      pdfBtn.disabled = false;
+    }
+  }
+</script>
+{% endblock %}

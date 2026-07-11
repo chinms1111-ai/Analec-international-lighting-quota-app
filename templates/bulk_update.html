@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Bulk Price Update{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>Bulk Price Update</h1>
+  </div>
+
+  <form method="post" class="form-card">
+    <label>Category
+      <select name="category" required>
+        <option value="">-- select category --</option>
+        {% for cat in categories %}
+        <option value="{{ cat }}">{{ cat }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>Apply change to
+      <select name="field">
+        <option value="cost_price">Cost Price</option>
+        <option value="markup_pct">Markup %</option>
+      </select>
+    </label>
+
+    <label>Percentage change
+      <input type="number" step="0.1" name="pct" placeholder="e.g. 10 to increase 10%, -5 to decrease 5%" required>
+    </label>
+
+    <p class="muted">This updates every item in the chosen category at once. Selling prices recalculate automatically. Use a negative number to decrease.</p>
+
+    <div class="form-actions">
+      <a href="{{ url_for('price_list') }}" class="btn btn-ghost">Cancel</a>
+      <button type="submit" class="btn btn-primary">Apply Update</button>
+    </div>
+  </form>
+{% endblock %}
