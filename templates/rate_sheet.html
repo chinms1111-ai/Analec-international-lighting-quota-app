@@ -168,10 +168,15 @@
 
     try {
       const sheet = document.querySelector('.quote-sheet');
+      // windowWidth forces html2canvas to render as if the browser were this
+      // wide, so the desktop table layout is captured even when the person
+      // downloading is on a phone (otherwise they'd get the mobile card view).
       const canvas = await html2canvas(sheet, {
         scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
+        windowWidth: 1000,
+        windowHeight: sheet.scrollHeight,
       });
 
       if (kind === 'image') {

@@ -535,7 +535,9 @@ tbody tr:hover { background: var(--gold-soft); }
 .quote-footer { margin-top: 22px; font-size: 0.85rem; color: var(--muted); }
 
 /* ---------------- Responsive ---------------- */
-@media (max-width: 640px) {
+/* "screen and" so this never shrinks font sizes / spacing on the printed or
+   exported quote and rate sheet, even if printed from a phone. */
+@media screen and (max-width: 640px) {
   .container { padding: 18px 14px 48px; }
   .topbar-inner { padding: 12px 14px; }
   .navlinks { gap: 2px; margin: 0 -6px; }
@@ -680,7 +682,10 @@ tbody tr:hover { background: var(--gold-soft); }
 }
 
 /* ---------------- Mobile card tables ---------------- */
-@media (max-width: 700px) {
+/* "screen and" ensures this NEVER applies when printing or saving as PDF via
+   the browser print dialog — contractors always see the full table there,
+   even if the person printing is on a phone. */
+@media screen and (max-width: 700px) {
   .cards-wrap {
     border: none;
     box-shadow: none;
