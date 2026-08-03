@@ -599,6 +599,66 @@ def init_db():
 
 with app.app_context():
     init_db()
+    
+def parse_price(s):
+    s = s.strip().lower()
+    if not s or s == '.':
+        return 0
+    if s.endswith('k'):
+        return float(s[:-1]) * 1000
+    if s.endswith('m'):
+        return float(s[:-1]) * 1_000_000
+    return float(s)
+
+def parse_pct(s):
+    s = s.strip()
+    if not s or s == '.':
+        return 0
+    val = float(s)
+    return val / 100 if val > 1 else val  # "20" -> 0.20
+
+def parse_int(s, default=0):
+    s = s.strip()
+    if not s or s == '.':
+        return default
+    return int(s)
+
+
+@app.route('/items/bulk_paste', methods=['GET', 'POST'])
+def bulk_paste_items():
+    if request.method == 'POST':
+        raw = request.form.get('bulk_text', '')
+        lines = [l.strip() for l in raw.strip().split('\n') if l.strip()]
+        added = 0
+        errors = []
+        for i, line in enumerate(lines, 1):
+            parts = [p.strip() for p in line.split(',')]
+            while len(parts) < 9:
+                parts.append('')
+            try:
+                category, name, brand, unit, cost_price, markup_pct, notes, qty, threshold = parts[:9]
+                if not name or name == '.':
+                    errors.append(f"Line {i}: missing name, skipped")
+                    continue
+                item = Item(
+                    category=category if category and category != '.' else 'Uncategorized',
+                    name=name,
+                    brand='' if brand == '.' else brand,
+                    unit=unit if unit and unit != '.' else 'piece',
+                    cost_price=parse_price(cost_price),
+                    markup_pct=parse_pct(markup_pct),
+                    notes='' if notes == '.' else notes,
+                    quantity_on_hand=parse_int(qty, 0),
+                    low_stock_threshold=parse_int(threshold, 5)
+                )
+                db.session.add(item)
+                added += 1
+            except Exception as e:
+                errors.append(f"Line {i}: {e}")
+        db.session.commit()
+        flash(f"Added {added} item(s)." + (f" Errors: {'; '.join(errors)}" if errors else ""))
+        return redirect(url_for('bulk_paste_items'))
+    return render_template('bulk_paste.html')
 
 
 if __name__ == '__main__':

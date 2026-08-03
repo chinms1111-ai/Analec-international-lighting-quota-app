@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Bulk Add Items</h2>
+<p>One item per line: <code>category, name, brand, unit, cost_price, markup_pct, notes, quantity, low_stock</code><br>
+Use <code>.</code> or leave blank to skip a field.</p>
+
+<form method="POST">
+  <textarea name="bulk_text" rows="12" style="width:100%;font-family:monospace;"
+    placeholder="phone, iphone 20, apple, piece, 200k, 2, its good, 5, 3"></textarea>
+  <br><br>
+  <button type="submit">Add Items</button>
+</form>
+{% endblock %}

@@ -33,6 +33,7 @@
         <a href="{{ url_for('rate_sheet') }}" class="{{ 'active' if request.endpoint == 'rate_sheet' }}">Rate Sheet</a>
         <a href="{{ url_for('quote_new') }}" class="{{ 'active' if request.endpoint == 'quote_new' }}">New Quote</a>
         <a href="{{ url_for('quotes_list') }}" class="{{ 'active' if request.endpoint == 'quotes_list' }}">Quotes</a>
+        <a href="{{ url_for('bulk_paste_items') }}">Bulk Add</a>
         <a href="{{ url_for('customers_list') }}" class="{{ 'active' if request.endpoint in ['customers_list', 'customer_view', 'customer_add', 'customer_edit'] }}">Customers</a>
         <a href="{{ url_for('settings') }}" class="{{ 'active' if request.endpoint == 'settings' }}">Settings</a>
         <a href="{{ url_for('logout') }}">Logout</a>
