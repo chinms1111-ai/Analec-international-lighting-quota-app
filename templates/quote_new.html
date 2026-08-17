@@ -50,7 +50,10 @@
         <tbody id="items-body"></tbody>
       </table>
     </div>
-    <button type="button" id="add-row-btn" class="btn btn-ghost">+ Add Item Row</button>
+    <div class="form-actions" style="justify-content:flex-start; gap:0.75rem;">
+      <button type="button" id="add-row-btn" class="btn btn-ghost">+ Add Item Row</button>
+      <button type="button" id="add-custom-row-btn" class="btn btn-ghost">+ Add Custom Item Row</button>
+    </div>
 
     <div class="totals-box">
       <div><span>Subtotal</span><span id="subtotal-display">₦0</span></div>
@@ -112,6 +115,7 @@ function itemOptions(selectedId) {
   return opts;
 }
 
+// ---- Catalog rows (existing behaviour, untouched) ----
 function addRow() {
   const tbody = document.getElementById('items-body');
   const idx = tbody.children.length;
@@ -166,6 +170,55 @@ function wireRow(tr) {
   removeBtn.addEventListener('click', () => { tr.remove(); recalcTotals(); });
 }
 
+// ---- Custom rows (new: for items not in your catalog) ----
+function addCustomRow() {
+  const tbody = document.getElementById('items-body');
+  const tr = document.createElement('tr');
+  tr.className = 'custom-row';
+  tr.innerHTML = `
+    <td>
+      <input type="text" name="custom_name[]" class="custom-name-input" placeholder="Item name (from paper)">
+      <label class="save-to-catalog-label" style="display:block; font-size:0.75rem; font-weight:400; margin-top:0.25rem;">
+        <input type="checkbox" class="save-to-catalog-check">
+        also save to my catalog
+      </label>
+      <input type="hidden" name="custom_save_to_catalog[]" class="save-to-catalog-hidden" value="0">
+    </td>
+    <td><input type="text" name="custom_unit[]" class="custom-unit-input" placeholder="e.g. piece" value="piece" style="width:80px;"></td>
+    <td><input type="number" name="custom_qty[]" class="qty-input" min="0" step="1" value=""></td>
+    <td><input type="number" name="custom_price[]" class="custom-price-input" min="0" step="1" placeholder="0" style="width:110px;"></td>
+    <td class="linetotal-cell">₦0</td>
+    <td class="stock-cell muted-cell">custom</td>
+    <td><button type="button" class="link-btn remove-row">Remove</button></td>
+  `;
+  tbody.appendChild(tr);
+  wireCustomRow(tr);
+}
+
+function wireCustomRow(tr) {
+  const qty = tr.querySelector('.qty-input');
+  const price = tr.querySelector('.custom-price-input');
+  const totalCell = tr.querySelector('.linetotal-cell');
+  const removeBtn = tr.querySelector('.remove-row');
+  const saveCheck = tr.querySelector('.save-to-catalog-check');
+  const saveHidden = tr.querySelector('.save-to-catalog-hidden');
+
+  function recalcRow() {
+    const p = parseFloat(price.value) || 0;
+    const q = parseFloat(qty.value) || 0;
+    totalCell.textContent = '₦' + (p * q).toLocaleString();
+    totalCell.dataset.total = p * q;
+    recalcTotals();
+  }
+
+  qty.addEventListener('input', recalcRow);
+  price.addEventListener('input', recalcRow);
+  saveCheck.addEventListener('change', () => {
+    saveHidden.value = saveCheck.checked ? '1' : '0';
+  });
+  removeBtn.addEventListener('click', () => { tr.remove(); recalcTotals(); });
+}
+
 function recalcTotals() {
   let subtotal = 0;
   document.querySelectorAll('.linetotal-cell').forEach(td => {
@@ -180,6 +233,7 @@ function recalcTotals() {
 }
 
 document.getElementById('add-row-btn').addEventListener('click', addRow);
+document.getElementById('add-custom-row-btn').addEventListener('click', addCustomRow);
 document.querySelector('[name="discount_pct"]').addEventListener('input', recalcTotals);
 
 loadCatalog().then(() => { addRow(); addRow(); addRow(); });

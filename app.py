@@ -454,6 +454,7 @@ def quote_new():
         )
         db.session.add(q)
 
+        # ---- Catalog item rows (existing behaviour) ----
         item_ids = request.form.getlist('item_id[]')
         qtys = request.form.getlist('qty[]')
         for item_id, qty in zip(item_ids, qtys):
@@ -468,6 +469,53 @@ def quote_new():
                 unit=it.unit,
                 qty=float(qty),
                 unit_price=it.selling_price,
+            )
+            q.lines.append(line)
+
+        # ---- Custom item rows (items not in the catalog, priced from paper) ----
+        custom_names = request.form.getlist('custom_name[]')
+        custom_units = request.form.getlist('custom_unit[]')
+        custom_qtys = request.form.getlist('custom_qty[]')
+        custom_prices = request.form.getlist('custom_price[]')
+        # This is a hidden input per row, always present (default "0"), so it
+        # lines up 1:1 with the other custom_*[] lists via zip().
+        custom_save_flags = request.form.getlist('custom_save_to_catalog[]')
+
+        for name, unit, qty, price, save_flag in zip(
+            custom_names, custom_units, custom_qtys, custom_prices, custom_save_flags
+        ):
+            name = name.strip()
+            if not name or not qty:
+                continue
+            try:
+                qty_f = float(qty)
+                price_f = float(price) if price else 0
+            except ValueError:
+                continue
+            if qty_f <= 0:
+                continue
+
+            new_item_id = None
+            if save_flag == '1':
+                # Add it to the catalog so it's available for future quotes.
+                new_catalog_item = Item(
+                    category='Uncategorized',
+                    name=name,
+                    unit=unit.strip() or 'piece',
+                    cost_price=price_f,
+                    markup_pct=0,  # quoted price becomes the base price; adjust later in Price List
+                    quantity_on_hand=0,
+                )
+                db.session.add(new_catalog_item)
+                db.session.flush()  # get its id before linking the quote line
+                new_item_id = new_catalog_item.id
+
+            line = QuoteLine(
+                item_id=new_item_id,
+                item_name=name,
+                unit=unit.strip() or 'piece',
+                qty=qty_f,
+                unit_price=price_f,
             )
             q.lines.append(line)
 
