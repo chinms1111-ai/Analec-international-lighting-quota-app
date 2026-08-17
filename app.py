@@ -4,6 +4,11 @@ from functools import wraps
 
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from flask_sqlalchemy import SQLAlchemy
+import base64
+import json
+import requests
+from dotenv import load_dotenv 
+load_dotenv()
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
@@ -708,6 +713,139 @@ def bulk_paste_items():
         return redirect(url_for('bulk_paste_items'))
     return render_template('bulk_paste.html')
 
+ 
+
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '').strip()
+GROQ_VISION_MODEL = 'qwen/qwen3.6-27b'
+GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
+
+SCAN_PROMPT = """Read this handwritten or printed price list from a Nigerian electrical/lighting supplier. Each line is written simply, like: "1 pcs of sqp bulb $1000" or "5 pcs led panel 6500" or "chandelier gold 85k".
+
+Return a JSON object with one key, "items", containing an array. Each element in the array must look exactly like this:
+{"name": "item name", "unit": "pcs", "qty": 1, "price": 1000}
+
+Rules:
+- qty is the number before the item (default to 1 if none is written).
+- unit is usually "pcs" unless something else is written (e.g. "coil", "roll", "box").
+- price is always a plain number in naira, no symbols or commas. Convert "k" to thousands (e.g. "85k" -> 85000). Ignore currency symbols like $ or \u20a6 - they still mean naira here.
+- If a price is crossed out and replaced, use the newer (uncrossed) price.
+- Skip lines that aren't priced items (titles, dates, totals, side notes).
+- If a line has no readable price, still include it with price 0.
+"""
+
+
+@app.route('/quotes/scan', methods=['POST'])
+@login_required
+def quote_scan():
+    if not GROQ_API_KEY:
+        return jsonify({'error': 'Scanning is not configured. Set GROQ_API_KEY on the server.'}), 500
+
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image uploaded.'}), 400
+
+    image_file = request.files['image']
+    image_bytes = image_file.read()
+    if not image_bytes:
+        return jsonify({'error': 'Empty image.'}), 400
+
+    # Basic size guard - keep uploads reasonable (5MB)
+    if len(image_bytes) > 5 * 1024 * 1024:
+        return jsonify({'error': 'Image too large. Please use a smaller photo (under 5MB).'}), 400
+
+    b64_image = base64.b64encode(image_bytes).decode('utf-8')
+    mime_type = image_file.mimetype or 'image/jpeg'
+    data_url = f'data:{mime_type};base64,{b64_image}'
+
+    payload = {
+        'model': GROQ_VISION_MODEL,
+        'messages': [
+            {
+                'role': 'user',
+                'content': [
+                    {'type': 'text', 'text': SCAN_PROMPT},
+                    {'type': 'image_url', 'image_url': {'url': data_url}},
+                ],
+            }
+        ],
+        'temperature': 0,
+        'max_completion_tokens': 2000,
+        'reasoning_effort': 'none',  # Qwen 3.6 27B: skip the "thinking" step so it
+                                      # answers directly, not with a reasoning
+                                      # monologue that can eat the whole token budget.
+        'response_format': {'type': 'json_object'},  # forces valid, parseable JSON
+    }
+
+    try:
+        resp = requests.post(
+            GROQ_API_URL,
+            headers={
+                'Authorization': f'Bearer {GROQ_API_KEY}',
+                'Content-Type': 'application/json',
+            },
+            json=payload,
+            timeout=30,
+        )
+        resp.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        # Log the actual response body (if any) so it shows up in Render logs -
+        # this is usually where the real reason (bad key, bad model name, rate
+        # limit, etc.) is hiding.
+        body = getattr(e.response, 'text', '') if hasattr(e, 'response') else ''
+        print(f'[quote_scan] Groq request failed: {e} | body: {body}')
+        return jsonify({'error': f'Could not reach Groq: {e}'}), 502
+
+    # Log the raw response once so we can see exactly what Groq sent back if
+    # parsing fails below - check your Render logs after a failed scan.
+    print(f'[quote_scan] Groq raw response: {resp.text[:2000]}')
+
+    try:
+        raw_text = resp.json()['choices'][0]['message']['content'].strip()
+        if not raw_text:
+            raise ValueError('Empty response from the model')
+        # Safety net: strip stray <think> blocks or markdown fences if the
+        # model adds them despite JSON mode.
+        if '<think>' in raw_text and '</think>' in raw_text:
+            raw_text = raw_text.split('</think>', 1)[1].strip()
+        if raw_text.startswith('```'):
+            raw_text = raw_text.strip('`')
+            if raw_text.lower().startswith('json'):
+                raw_text = raw_text[4:].strip()
+        parsed = json.loads(raw_text)
+        # JSON mode returns an object - unwrap the "items" list from it.
+        if isinstance(parsed, dict):
+            items = parsed.get('items', [])
+        elif isinstance(parsed, list):
+            items = parsed  # in case the model still returns a bare array
+        else:
+            raise ValueError('Unexpected JSON shape from the model')
+        if not isinstance(items, list):
+            raise ValueError('Expected "items" to be a list')
+    except (KeyError, IndexError, ValueError, json.JSONDecodeError) as e:
+        return jsonify({'error': f'Could not parse the scan result: {e}'}), 502
+
+    # Sanitize each item before sending to the frontend
+    clean_items = []
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        name = str(it.get('name', '')).strip()
+        if not name:
+            continue
+        unit = str(it.get('unit') or 'piece').strip()
+        qty = it.get('qty')
+        try:
+            qty = float(qty) if qty is not None else 1
+        except (TypeError, ValueError):
+            qty = 1
+        price = it.get('price')
+        try:
+            price = float(price) if price is not None else 0
+        except (TypeError, ValueError):
+            price = 0
+        clean_items.append({'name': name, 'unit': unit, 'qty': qty, 'price': price})
+
+    return jsonify({'items': clean_items})
+ 
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

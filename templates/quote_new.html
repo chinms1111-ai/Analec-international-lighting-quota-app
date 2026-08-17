@@ -50,10 +50,13 @@
         <tbody id="items-body"></tbody>
       </table>
     </div>
-    <div class="form-actions" style="justify-content:flex-start; gap:0.75rem;">
+    <div class="form-actions" style="justify-content:flex-start; gap:0.75rem; flex-wrap:wrap;">
       <button type="button" id="add-row-btn" class="btn btn-ghost">+ Add Item Row</button>
       <button type="button" id="add-custom-row-btn" class="btn btn-ghost">+ Add Custom Item Row</button>
+      <button type="button" id="scan-btn" class="btn btn-ghost">📷 Scan Paper List</button>
+      <input type="file" id="scan-file-input" accept="image/*" capture="environment" style="display:none;">
     </div>
+    <div id="scan-status" style="display:none; margin-top:0.5rem; font-size:0.9rem;"></div>
 
     <div class="totals-box">
       <div><span>Subtotal</span><span id="subtotal-display">₦0</span></div>
@@ -171,28 +174,38 @@ function wireRow(tr) {
 }
 
 // ---- Custom rows (new: for items not in your catalog) ----
-function addCustomRow() {
+// Accepts an optional prefill object: { name, unit, qty, price } — used both
+// for manually-added blank rows and rows auto-filled from a paper scan.
+function addCustomRow(prefill) {
+  prefill = prefill || {};
   const tbody = document.getElementById('items-body');
   const tr = document.createElement('tr');
   tr.className = 'custom-row';
+  const name = prefill.name ? String(prefill.name).replace(/"/g, '&quot;') : '';
+  const unit = prefill.unit ? String(prefill.unit).replace(/"/g, '&quot;') : 'piece';
+  const qty = (prefill.qty !== undefined && prefill.qty !== null) ? prefill.qty : '';
+  const price = (prefill.price !== undefined && prefill.price !== null) ? prefill.price : '';
+  const fromScan = prefill.fromScan ? ' (from scan — please check)' : '';
   tr.innerHTML = `
     <td>
-      <input type="text" name="custom_name[]" class="custom-name-input" placeholder="Item name (from paper)">
+      <input type="text" name="custom_name[]" class="custom-name-input" placeholder="Item name (from paper)" value="${name}">
+      ${fromScan ? '<div style="font-size:0.7rem; color:#a06b00;">from scan — please check</div>' : ''}
       <label class="save-to-catalog-label" style="display:block; font-size:0.75rem; font-weight:400; margin-top:0.25rem;">
         <input type="checkbox" class="save-to-catalog-check">
         also save to my catalog
       </label>
       <input type="hidden" name="custom_save_to_catalog[]" class="save-to-catalog-hidden" value="0">
     </td>
-    <td><input type="text" name="custom_unit[]" class="custom-unit-input" placeholder="e.g. piece" value="piece" style="width:80px;"></td>
-    <td><input type="number" name="custom_qty[]" class="qty-input" min="0" step="1" value=""></td>
-    <td><input type="number" name="custom_price[]" class="custom-price-input" min="0" step="1" placeholder="0" style="width:110px;"></td>
+    <td><input type="text" name="custom_unit[]" class="custom-unit-input" placeholder="e.g. piece" value="${unit}" style="width:80px;"></td>
+    <td><input type="number" name="custom_qty[]" class="qty-input" min="0" step="1" value="${qty}"></td>
+    <td><input type="number" name="custom_price[]" class="custom-price-input" min="0" step="1" placeholder="0" value="${price}" style="width:110px;"></td>
     <td class="linetotal-cell">₦0</td>
     <td class="stock-cell muted-cell">custom</td>
     <td><button type="button" class="link-btn remove-row">Remove</button></td>
   `;
   tbody.appendChild(tr);
   wireCustomRow(tr);
+  return tr;
 }
 
 function wireCustomRow(tr) {
@@ -217,6 +230,8 @@ function wireCustomRow(tr) {
     saveHidden.value = saveCheck.checked ? '1' : '0';
   });
   removeBtn.addEventListener('click', () => { tr.remove(); recalcTotals(); });
+
+  recalcRow(); // run once immediately in case the row was prefilled (e.g. from a scan)
 }
 
 function recalcTotals() {
@@ -233,10 +248,64 @@ function recalcTotals() {
 }
 
 document.getElementById('add-row-btn').addEventListener('click', addRow);
-document.getElementById('add-custom-row-btn').addEventListener('click', addCustomRow);
+document.getElementById('add-custom-row-btn').addEventListener('click', () => addCustomRow());
 document.querySelector('[name="discount_pct"]').addEventListener('input', recalcTotals);
 
 loadCatalog().then(() => { addRow(); addRow(); addRow(); });
 loadCustomers();
+
+// ---- Scan a paper price list and auto-fill custom rows ----
+const scanBtn = document.getElementById('scan-btn');
+const scanFileInput = document.getElementById('scan-file-input');
+const scanStatus = document.getElementById('scan-status');
+
+scanBtn.addEventListener('click', () => scanFileInput.click());
+
+scanFileInput.addEventListener('change', async () => {
+  const file = scanFileInput.files[0];
+  if (!file) return;
+
+  scanBtn.disabled = true;
+  scanStatus.style.display = 'block';
+  scanStatus.textContent = 'Reading your paper list… this can take a few seconds.';
+
+  const formData = new FormData();
+  formData.append('image', file);
+
+  try {
+    const res = await fetch("{{ url_for('quote_scan') }}", {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      scanStatus.textContent = 'Scan failed: ' + (data.error || 'unknown error') + '. You can still add items manually below.';
+      return;
+    }
+
+    if (!data.items || data.items.length === 0) {
+      scanStatus.textContent = 'No items could be read from that photo. Try a clearer, well-lit shot, or add items manually.';
+      return;
+    }
+
+    for (const item of data.items) {
+      addCustomRow({
+        name: item.name,
+        unit: item.unit,
+        qty: item.qty,
+        price: item.price,
+        fromScan: true,
+      });
+    }
+
+    scanStatus.textContent = `Added ${data.items.length} item(s) from your photo — please check each one before saving, especially the prices.`;
+  } catch (err) {
+    scanStatus.textContent = 'Something went wrong reaching the scan service. You can still add items manually below.';
+  } finally {
+    scanBtn.disabled = false;
+    scanFileInput.value = ''; // allow re-selecting the same file again later
+  }
+});
 </script>
 {% endblock %}
